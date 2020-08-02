@@ -1,0 +1,10 @@
+{
+  "domain": "MiPhone_tracker",
+  "name": "MiPhone_tracker",
+  "documentation": "https://github.com/zrincet/MiPhone_tracker",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": [
+    "@zrincet"
+  ]
+}

@@ -1,0 +1,6 @@
+ {
+  "name": "MiPhone_tracker",
+  "country": "CN",
+  "render_readme": true,
+  "domains": ["sensor"]
+}
