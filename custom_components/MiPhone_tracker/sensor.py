@@ -102,7 +102,7 @@ class MiPhoneTracker(Entity):
 
     @property
     def state(self):
-        return self.device_location_update_time
+        return self.device_lat + ', ' + self.device_lon
 
     @property
     def icon(self):
