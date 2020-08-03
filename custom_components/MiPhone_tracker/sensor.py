@@ -31,7 +31,7 @@ from homeassistant.components.weather import ( PLATFORM_SCHEMA)
 import homeassistant.helpers.config_validation as cv
 
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 _LOGGER = logging.getLogger(__name__)
 REQUIREMENTS = ['requests']
 TIME_BETWEEN_UPDATES = timedelta(seconds=300)
