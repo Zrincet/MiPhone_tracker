@@ -31,7 +31,7 @@ from homeassistant.components.weather import ( PLATFORM_SCHEMA)
 import homeassistant.helpers.config_validation as cv
 
 
-__version__ = '0.1.1'
+__version__ = '0.2.0'
 _LOGGER = logging.getLogger(__name__)
 REQUIREMENTS = ['requests']
 TIME_BETWEEN_UPDATES = timedelta(seconds=300)
@@ -41,6 +41,7 @@ CONF_ACCOUNT = "account"
 CONF_PASSWORD = "password"
 CONF_CHOOSE = "device_choose"
 CONF_DELTA = "update_delta"
+CONF_COORDINATE_TYPE = "coordinate_type"
 
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
@@ -48,6 +49,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_PASSWORD): cv.string,
     vol.Required(CONF_CHOOSE, default=1): cv.string,
     vol.Required(CONF_DELTA, default=300): cv.string,
+    vol.Required(CONF_COORDINATE_TYPE, default='baidu'): cv.string,
 })
 
 
@@ -58,8 +60,9 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     user = config[CONF_ACCOUNT]
     password = config[CONF_PASSWORD]
     choose = config[CONF_CHOOSE]
+    coordinate_type = config[CONF_COORDINATE_TYPE]
 
-    data = MiPhoneData(hass, user, password, choose)
+    data = MiPhoneData(hass, user, password, choose, coordinate_type)
 
     yield from data.async_update(dt_util.now())
     global TIME_BETWEEN_UPDATES
@@ -72,21 +75,8 @@ class MiPhoneTracker(Entity):
 
     def __init__(self, data):
         """Initialize."""
-        self._name = None
-        self._condition = None
-        self._temperature = None
-        self._temperature_unit = None
-        self._humidity = None
-        self._pressure = None
-        self._wind_speed = None
-        self._wind_bearing = None
-        self._forecast = None
 
         self._data = data
-        self._updatetime = None
-        self._aqi = None
-        self._uv = None
-
         self.device_name = None
         self.device_imei = None
         self.device_phone = None
@@ -95,6 +85,7 @@ class MiPhoneTracker(Entity):
         self.device_accuracy = None
         self.device_power = None
         self.device_location_update_time = None
+        self.coordinate_type = None
 
     @property
     def name(self):
@@ -126,7 +117,8 @@ class MiPhoneTracker(Entity):
             "gps_accuracy": self.device_accuracy,
             "phone": self.device_phone,
             "altitude": 0,
-            "provider": "Mi Cloud"
+            "provider": "Mi Cloud",
+            "coordinate_type": self.coordinate_type
         }
 
     @asyncio.coroutine
@@ -140,6 +132,7 @@ class MiPhoneTracker(Entity):
         self.device_accuracy = self._data.device_accuracy
         self.device_power = self._data.device_power
         self.device_location_update_time = self._data.device_location_update_time
+        self.coordinate_type = self._data.coordinate_type
         # _LOGGER.debug("success to update informations")
 
 
@@ -147,7 +140,7 @@ class MiPhoneTracker(Entity):
 class MiPhoneData(object):
     """获取相关的数据，存储在这个类中."""
 
-    def __init__(self, hass, user=None, password=None, deviceChoose=None):
+    def __init__(self, hass, user=None, password=None, deviceChoose=None, coordinate_type=None):
         """初始化函数."""
         self._hass = hass
         self.device_name = None
@@ -164,6 +157,7 @@ class MiPhoneData(object):
 
         self._user = user
         self._password = password
+        self.coordinate_type = str(coordinate_type)
         self.Service_Token = None
         self.userId = None
         self._cookies = {}
@@ -335,12 +329,23 @@ class MiPhoneData(object):
             with async_timeout.timeout(15, loop=self._hass.loop):
                 r = await session.get(url, headers=_send_find_device_command_header)
             if r.status == 200:
-                self.device_lat = json.loads(
-                    await r.text())['data']['location']['receipt']['gpsInfo']['latitude']
-                self.device_accuracy = int(json.loads(
-                    await r.text())['data']['location']['receipt']['gpsInfo']['accuracy'])
-                self.device_lon = json.loads(
-                    await r.text())['data']['location']['receipt']['gpsInfo']['longitude']
+                location_info_json = {}
+                if self.coordinate_type.find("baidu") != -1:
+                    location_info_json = json.loads(await r.text())['data']['location']['receipt']['gpsInfo']
+                elif self.coordinate_type.find("google") != -1:
+                    location_info_json = json.loads(await r.text())['data']['location']['receipt']['gpsInfoExtra'][0]
+                elif self.coordinate_type.find("original") != -1:
+                    location_info_json = json.loads(await r.text())['data']['location']['receipt']['gpsInfoExtra'][1]
+                else:
+                    _LOGGER.warning("coordinate_type {} not find in Mi Cloud!".format(self.coordinate_type))
+                    self.login_result = False
+                    return False
+
+                self.device_lat = location_info_json['latitude']
+                self.device_accuracy = int(location_info_json['accuracy'])
+                self.device_lon = location_info_json['longitude']
+                self.coordinate_type = location_info_json['coordinateType']
+
                 self.device_power = json.loads(
                     await r.text())['data']['location']['receipt']['powerLevel']
                 self.device_phone = json.loads(
