@@ -102,7 +102,10 @@ class MiPhoneTracker(Entity):
 
     @property
     def state(self):
-        return self.device_lat + ', ' + self.device_lon
+        if self.device_lat is not None and self.device_lon is not None:
+            return '{}, {}'.format(self.device_lat, self.device_lon)
+        else:
+            return self.device_location_update_time
 
     @property
     def icon(self):
@@ -121,6 +124,7 @@ class MiPhoneTracker(Entity):
             "latitude": self.device_lat,
             "longitude": self.device_lon,
             "gps_accuracy": self.device_accuracy,
+            "phone": self.device_phone,
             "altitude": 0,
             "provider": "Mi Cloud"
         }
