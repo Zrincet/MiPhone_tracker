@@ -31,7 +31,7 @@ from homeassistant.components.weather import ( PLATFORM_SCHEMA)
 import homeassistant.helpers.config_validation as cv
 
 
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 _LOGGER = logging.getLogger(__name__)
 REQUIREMENTS = ['requests']
 TIME_BETWEEN_UPDATES = timedelta(seconds=300)
@@ -351,7 +351,8 @@ class MiPhoneData(object):
                 self.device_phone = json.loads(
                     await r.text())['data']['location']['receipt']['phone']
                 timeArray = time.localtime(int(json.loads(
-                    await r.text())['data']['location']['receipt']['infoTime']) / 1000 + 28800)
+                    # await r.text())['data']['location']['receipt']['infoTime']) / 1000 + 28800)
+                    await r.text())['data']['location']['receipt']['infoTime']) / 1000)
                 self.device_location_update_time = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
 
                 return True
